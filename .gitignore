@@ -1,0 +1,48 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# CMake artifacts
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+CTestTestfile.cmake
+_deps/
+
+# Make/Ninja artifacts
+Makefile
+*.ninja
+.ninja_deps
+.ninja_log
+
+# Object/library/binary artifacts
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.elf
+*.bin
+*.hex
+*.map
+
+# Dependency/generated files
+*.d
+*.gcno
+*.gcda
+*.gcov
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
