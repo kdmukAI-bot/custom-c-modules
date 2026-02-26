@@ -1,0 +1,28 @@
+set(srcs "")
+set(include_dirs ".")
+set(component_requires "lvgl")
+
+
+list(APPEND srcs
+    "fonts/opensans_regular_17_4bpp.c"
+    "fonts/opensans_semibold_18_4bpp.c"
+    "fonts/opensans_semibold_20_2bpp.c"
+    "fonts/seedsigner_icons_24_4bpp.c"
+    "fonts/opensans_regular_17_4bpp_125x.c"
+    "fonts/opensans_semibold_18_4bpp_125x.c"
+    "fonts/opensans_semibold_20_4bpp_125x.c"
+    "fonts/seedsigner_icons_24_4bpp_125x.c"
+    "fonts/opensans_regular_17_4bpp_150x.c"
+    "fonts/opensans_semibold_18_4bpp_150x.c"
+    "fonts/opensans_semibold_20_4bpp_150x.c"
+    "fonts/seedsigner_icons_24_4bpp_150x.c"
+    "seedsigner.cpp"
+    "components.cpp"
+)
+
+
+idf_component_register(
+    SRCS ${srcs}
+    INCLUDE_DIRS ${include_dirs}
+    REQUIRES ${component_requires}
+)
