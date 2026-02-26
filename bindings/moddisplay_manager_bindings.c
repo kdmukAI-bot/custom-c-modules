@@ -1,24 +1,18 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include "display_manager.h"
-#ifdef __cplusplus
-}
-#endif
+// C-callable wrappers implemented in display_manager_shim.cpp
+void dm_shim_init(void);
+void dm_shim_render_demo_ui(void);
 
-// dm.init()
 static mp_obj_t mp_dm_init(void) {
-    init();
+    dm_shim_init();
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(dm_init_obj, mp_dm_init);
 
-// dm.render_demo_ui()
 static mp_obj_t mp_dm_render_demo_ui(void) {
-    render_demo_ui();
+    dm_shim_render_demo_ui();
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(dm_render_demo_ui_obj, mp_dm_render_demo_ui);
