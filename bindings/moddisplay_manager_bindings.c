@@ -4,6 +4,8 @@
 // C-callable wrappers implemented in display_manager_shim.cpp
 void dm_shim_init(void);
 void dm_shim_render_demo_ui(void);
+size_t dm_shim_dma_internal_free(void);
+size_t dm_shim_dma_internal_largest(void);
 
 static mp_obj_t mp_dm_init(void) {
     dm_shim_init();
@@ -17,10 +19,20 @@ static mp_obj_t mp_dm_render_demo_ui(void) {
 }
 static MP_DEFINE_CONST_FUN_OBJ_0(dm_render_demo_ui_obj, mp_dm_render_demo_ui);
 
+
+static mp_obj_t mp_dm_mem_stats(void) {
+    mp_obj_t t[2];
+    t[0] = mp_obj_new_int_from_uint(dm_shim_dma_internal_free());
+    t[1] = mp_obj_new_int_from_uint(dm_shim_dma_internal_largest());
+    return mp_obj_new_tuple(2, t);
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(dm_mem_stats_obj, mp_dm_mem_stats);
+
 static const mp_rom_map_elem_t dm_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_dm) },
     { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&dm_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_render_demo_ui), MP_ROM_PTR(&dm_render_demo_ui_obj) },
+    { MP_ROM_QSTR(MP_QSTR_mem_stats), MP_ROM_PTR(&dm_mem_stats_obj) },
 };
 static MP_DEFINE_CONST_DICT(dm_module_globals, dm_module_globals_table);
 
