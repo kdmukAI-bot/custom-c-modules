@@ -29,6 +29,7 @@ typedef struct {
 
 void demo_screen(void *ctx);
 void button_list_screen(void *ctx);
+void main_menu_screen(void *ctx);
 void lv_seedsigner_screen_close(void);
 
 #ifdef __cplusplus

@@ -76,6 +76,15 @@ static void parse_optional_top_nav(mp_obj_t top_nav_obj, top_nav_ctx_t *top_nav)
     }
 }
 
+
+static mp_obj_t mp_seedsigner_lvgl_main_menu_screen(void) {
+    if (!run_screen(main_menu_screen, NULL)) {
+        mp_raise_msg(&mp_type_RuntimeError, MP_ERROR_TEXT("display lock unavailable"));
+    }
+    return mp_const_none;
+}
+static MP_DEFINE_CONST_FUN_OBJ_0(seedsigner_lvgl_main_menu_screen_obj, mp_seedsigner_lvgl_main_menu_screen);
+
 static mp_obj_t mp_seedsigner_lvgl_button_list_screen(mp_obj_t cfg_obj) {
     if (!mp_obj_is_type(cfg_obj, &mp_type_dict)) {
         mp_raise_TypeError(MP_ERROR_TEXT("button_list_screen expects a dict"));
@@ -180,6 +189,7 @@ static const mp_rom_map_elem_t seedsigner_lvgl_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_seedsigner_lvgl) },
     { MP_ROM_QSTR(MP_QSTR_demo_screen), MP_ROM_PTR(&seedsigner_lvgl_demo_screen_obj) },
     { MP_ROM_QSTR(MP_QSTR_button_list_screen), MP_ROM_PTR(&seedsigner_lvgl_button_list_screen_obj) },
+    { MP_ROM_QSTR(MP_QSTR_main_menu_screen), MP_ROM_PTR(&seedsigner_lvgl_main_menu_screen_obj) },
     { MP_ROM_QSTR(MP_QSTR_poll_for_result), MP_ROM_PTR(&seedsigner_lvgl_poll_for_result_obj) },
     { MP_ROM_QSTR(MP_QSTR_clear_result_queue), MP_ROM_PTR(&seedsigner_lvgl_clear_result_queue_obj) },
 };

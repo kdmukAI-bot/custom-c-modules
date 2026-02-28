@@ -27,30 +27,36 @@ static constexpr const char* ICON_FONT_NAME__FONT_AWESOME = "Font_Awesome_6_Free
     LV_FONT_DECLARE(opensans_semibold_18_4bpp_150x);
     LV_FONT_DECLARE(opensans_regular_17_4bpp_150x);
     LV_FONT_DECLARE(seedsigner_icons_24_4bpp_150x);
+    LV_FONT_DECLARE(seedsigner_icons_36_4bpp_150x);
 
     const lv_font_t TOP_NAV_TITLE_FONT = opensans_semibold_20_4bpp_150x;
     const lv_font_t BUTTON_FONT = opensans_semibold_18_4bpp_150x;
     const lv_font_t BODY_FONT = opensans_regular_17_4bpp_150x;
     const lv_font_t ICON_FONT__SEEDSIGNER = seedsigner_icons_24_4bpp_150x;
+    const lv_font_t ICON_LARGE_BUTTON_FONT__SEEDSIGNER = seedsigner_icons_36_4bpp_150x;
 #elif PX_MULTIPLIER == 125
     LV_FONT_DECLARE(opensans_semibold_20_4bpp_125x);
     LV_FONT_DECLARE(opensans_semibold_18_4bpp_125x);
     LV_FONT_DECLARE(opensans_regular_17_4bpp_125x);
     LV_FONT_DECLARE(seedsigner_icons_24_4bpp_125x);
+    LV_FONT_DECLARE(seedsigner_icons_36_4bpp_125x);
     const lv_font_t TOP_NAV_TITLE_FONT = opensans_semibold_20_4bpp_125x;
     const lv_font_t BUTTON_FONT = opensans_semibold_18_4bpp_125x;
     const lv_font_t BODY_FONT = opensans_regular_17_4bpp_125x;
     const lv_font_t ICON_FONT__SEEDSIGNER = seedsigner_icons_24_4bpp_125x;
+    const lv_font_t ICON_LARGE_BUTTON_FONT__SEEDSIGNER = seedsigner_icons_36_4bpp_125x;
 #else
     LV_FONT_DECLARE(opensans_semibold_20_4bpp);
     LV_FONT_DECLARE(opensans_semibold_18_4bpp);
     LV_FONT_DECLARE(opensans_regular_17_4bpp);
     LV_FONT_DECLARE(seedsigner_icons_24_4bpp);
+    LV_FONT_DECLARE(seedsigner_icons_36_4bpp);
 
     const lv_font_t TOP_NAV_TITLE_FONT = opensans_semibold_20_4bpp;
     const lv_font_t BUTTON_FONT = opensans_semibold_18_4bpp;
     const lv_font_t BODY_FONT = opensans_regular_17_4bpp;
     const lv_font_t ICON_FONT__SEEDSIGNER = seedsigner_icons_24_4bpp;
+    const lv_font_t ICON_LARGE_BUTTON_FONT__SEEDSIGNER = seedsigner_icons_36_4bpp;
 #endif
 const int ICON_FONT_SIZE = static_cast<int>(22 * PX_MULTIPLIER / 100.0);
 const int ICON_INLINE_FONT_SIZE = static_cast<int>(24 * PX_MULTIPLIER / 100.0);
@@ -79,6 +85,7 @@ const int BUTTON_BACKGROUND_COLOR = 0x2c2c2c;
 const int BUTTON_HEIGHT = static_cast<int>(32 * PX_MULTIPLIER / 100.0);
 const int BUTTON_SELECTED_FONT_COLOR = 0x000000;
 const int BUTTON_RADIUS = static_cast<int>(8 * PX_MULTIPLIER / 100.0);
+const int MAIN_MENU_BUTTON_HEIGHT = static_cast<int>(56 * PX_MULTIPLIER / 100.0);
 
 const int NOTIFICATION_COLOR = 0x00f100;
 

@@ -76,6 +76,8 @@ void button_list_screen(void *ctx)
             .show_back_button = false,
             .show_power_button = false,
         },
+        .button_list = NULL,
+        .button_list_len = 0,
     };
 
     const button_list_screen_ctx_t *screen_ctx = (const button_list_screen_ctx_t *)ctx;
@@ -114,6 +116,86 @@ void button_list_screen(void *ctx)
     lv_obj_set_style_pad_right(body_content, 0, LV_PART_SCROLLBAR);
 
     button_list(body_content, screen_ctx->button_list, screen_ctx->button_list_len);
+
+    load_screen_and_cleanup_previous(scr);
+}
+
+
+void main_menu_screen(void *ctx)
+{
+    (void)ctx;
+
+    top_nav_ctx_t top_nav_ctx = TOP_NAV_CTX_DEFAULTS;
+    top_nav_ctx.title = "Home";
+    top_nav_ctx.show_back_button = false;
+    top_nav_ctx.show_power_button = true;
+
+    lv_obj_t *scr = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(scr, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN);
+    lv_obj_set_style_radius(scr, 0, LV_PART_MAIN);
+    lv_obj_set_style_text_line_space(scr, BODY_LINE_SPACING, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(scr, 0, LV_PART_MAIN);
+    lv_obj_set_style_outline_width(scr, 0, LV_PART_MAIN);
+
+    lv_obj_t* lv_seedsigner_top_nav = top_nav(scr, &top_nav_ctx);
+
+    lv_obj_t* body_content = lv_obj_create(scr);
+    lv_obj_set_size(body_content, lv_obj_get_width(scr), lv_obj_get_height(scr) - TOP_NAV_HEIGHT - COMPONENT_PADDING);
+    lv_obj_align_to(body_content, lv_seedsigner_top_nav, LV_ALIGN_OUT_BOTTOM_MID, 0, COMPONENT_PADDING);
+    lv_obj_set_style_bg_color(body_content, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN);
+    lv_obj_set_style_pad_left(body_content, EDGE_PADDING, LV_PART_MAIN);
+    lv_obj_set_style_pad_right(body_content, EDGE_PADDING, LV_PART_MAIN);
+    lv_obj_set_style_pad_top(body_content, 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_bottom(body_content, COMPONENT_PADDING, LV_PART_MAIN);
+    lv_obj_set_style_border_width(body_content, 0, LV_PART_MAIN);
+    lv_obj_set_scroll_dir(body_content, LV_DIR_NONE);
+    lv_obj_set_scrollbar_mode(body_content, LV_SCROLLBAR_MODE_OFF);
+
+    static const char *icons[] = {
+        SeedSignerIconConstants::SCAN,
+        SeedSignerIconConstants::SEEDS,
+        SeedSignerIconConstants::TOOLS,
+        SeedSignerIconConstants::SETTINGS,
+    };
+    static const char *labels[] = {"Scan", "Seeds", "Tools", "Settings"};
+
+    const lv_coord_t available_w = lv_obj_get_content_width(body_content);
+    const lv_coord_t available_h = lv_obj_get_content_height(body_content);
+
+    const lv_coord_t outer_x = EDGE_PADDING * 3;
+    const lv_coord_t outer_y = COMPONENT_PADDING * 3;
+    const lv_coord_t gap_x = COMPONENT_PADDING * 3;
+    const lv_coord_t gap_y = COMPONENT_PADDING * 3;
+
+    lv_coord_t usable_w = available_w - (outer_x * 2);
+    lv_coord_t usable_h = available_h - (outer_y * 2);
+    if (usable_w < 100) usable_w = available_w;
+    if (usable_h < 100) usable_h = available_h;
+
+    lv_coord_t button_w = (usable_w - gap_x) / 2;
+    lv_coord_t button_h = (usable_h - gap_y) / 2;
+    if (button_w < 40) button_w = 40;
+    if (button_h < 40) button_h = 40;
+
+    const lv_coord_t grid_w = (button_w * 2) + gap_x;
+    const lv_coord_t grid_h = (button_h * 2) + gap_y;
+    const lv_coord_t x0 = (available_w > grid_w) ? ((available_w - grid_w) / 2) : 0;
+    const lv_coord_t y0 = (available_h > grid_h) ? ((available_h - grid_h) / 2) : 0;
+
+    lv_obj_t *buttons[4] = {NULL, NULL, NULL, NULL};
+    for (uint32_t i = 0; i < 4; ++i) {
+        lv_obj_t *btn = large_icon_button(body_content, icons[i], labels[i], NULL);
+        lv_obj_set_size(btn, button_w, button_h);
+
+        lv_coord_t col = i % 2;
+        lv_coord_t row = i / 2;
+        lv_obj_set_pos(btn, x0 + col * (button_w + gap_x), y0 + row * (button_h + gap_y));
+        buttons[i] = btn;
+    }
+
+    if (buttons[0]) {
+        button_set_active(buttons[0], true);
+    }
 
     load_screen_and_cleanup_previous(scr);
 }
