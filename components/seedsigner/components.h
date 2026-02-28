@@ -2,9 +2,15 @@
 #define SEEDSIGNER_COMPONENTS_H
 
 #include "lvgl.h"
-#include "seedsigner.h"
+#include <stdbool.h>
+#include <stddef.h>
 
-lv_obj_t* top_nav(lv_obj_t* parent, const top_nav_ctx_t *ctx);
+lv_obj_t* top_nav(lv_obj_t* lv_parent, const char *title, bool show_back_button, bool show_power_button);
+
+typedef struct {
+    const char *label;
+    void *value;
+} button_list_item_t;
 
 lv_obj_t* button(lv_obj_t* lv_parent, const char* text, lv_obj_t* align_to);
 lv_obj_t* large_icon_button(lv_obj_t* lv_parent, const char* icon, const char* text, lv_obj_t* align_to);

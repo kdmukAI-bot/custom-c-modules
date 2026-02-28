@@ -4,6 +4,78 @@
 
 #include "lvgl.h"
 
+#include <nlohmann/json.hpp>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+using json = nlohmann::json;
+
+
+// Reusable utility: build TopNav from any screen JSON config.
+// Reads cfg["top_nav"] and applies defaults when missing.
+static lv_obj_t* top_nav_from_screen_json(lv_obj_t* lv_parent, const json &cfg) {
+    bool show_back = true;
+    bool show_power = false;
+
+    if (!cfg.is_object()) {
+        throw std::runtime_error("screen config must be a JSON object");
+    }
+    if (!cfg.contains("top_nav") || !cfg["top_nav"].is_object()) {
+        throw std::runtime_error("top_nav object is required");
+    }
+
+    const auto &tn = cfg["top_nav"];
+    if (!tn.contains("title") || !tn["title"].is_string()) {
+        throw std::runtime_error("top_nav.title is required and must be a string");
+    }
+    std::string title = tn["title"].get<std::string>();
+
+    {
+        if (tn.contains("show_back_button")) {
+            if (!tn["show_back_button"].is_boolean()) {
+                throw std::runtime_error("top_nav.show_back_button must be a boolean");
+            }
+            show_back = tn["show_back_button"].get<bool>();
+        }
+        if (tn.contains("show_power_button")) {
+            if (!tn["show_power_button"].is_boolean()) {
+                throw std::runtime_error("top_nav.show_power_button must be a boolean");
+            }
+            show_power = tn["show_power_button"].get<bool>();
+        }
+    }
+
+    return top_nav(lv_parent, title.c_str(), show_back, show_power);
+}
+
+// Reusable sanity check for incoming screen JSON payloads.
+// Throws std::runtime_error on invalid shape/syntax.
+static void parse_screen_json_ctx(const char *ctx_json, json &cfg_out) {
+    if (!ctx_json) {
+        throw std::runtime_error("screen JSON context is required");
+    }
+
+    try {
+        cfg_out = json::parse(ctx_json);
+    } catch (...) {
+        throw std::runtime_error("invalid JSON syntax");
+    }
+
+    if (!cfg_out.is_object()) {
+        throw std::runtime_error("screen config must be a JSON object");
+    }
+}
+
+// Switch to a newly built LVGL screen and dispose of the old one.
+//
+// Rationale:
+// - Every screen render path allocates a fresh root screen (`lv_obj_create(NULL)`).
+// - If we do not delete the previous root, those widget trees remain allocated and
+//   accumulate over repeated navigations/renders.
+// - We only delete after `lv_scr_load(new_screen)` so LVGL has already switched the
+//   active screen; this avoids deleting the currently active screen too early.
+// - The `old_screen != new_screen` guard is a safety check for accidental reuse.
 static void load_screen_and_cleanup_previous(lv_obj_t *new_screen) {
     lv_obj_t *old_screen = lv_scr_act();
     lv_scr_load(new_screen);
@@ -12,40 +84,69 @@ static void load_screen_and_cleanup_previous(lv_obj_t *new_screen) {
     }
 }
 
-void demo_screen(void *ctx)
-{
-    top_nav_ctx_t top_nav_ctx = TOP_NAV_CTX_DEFAULTS;
-    top_nav_ctx.title = "Settings";
 
-    // Create a new screen
-    lv_obj_t * scr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(scr, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN); // Set background color to black
-
-    // Set global style defaults
-    lv_obj_set_style_radius(scr, 0, LV_PART_MAIN);
-    lv_obj_set_style_text_line_space(scr, BODY_LINE_SPACING, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(scr, 0, LV_PART_MAIN);
-    lv_obj_set_style_outline_width(scr, 0, LV_PART_MAIN);
-
-    lv_obj_t* lv_seedsigner_top_nav = top_nav(scr, &top_nav_ctx); // Add top navigation bar
-
-    lv_obj_t* body_content = lv_obj_create(scr);
-    lv_obj_set_size(body_content, lv_obj_get_width(scr), lv_obj_get_height(scr) - TOP_NAV_HEIGHT - COMPONENT_PADDING);
-    lv_obj_align_to(body_content, lv_seedsigner_top_nav, LV_ALIGN_OUT_BOTTOM_MID, 0, COMPONENT_PADDING);
+// Build the standard "body" container used by screens beneath TopNav.
+// Most screens share the same layout/styling shell (size, alignment, padding, background,
+// border, and scrollbar baseline behavior). This function encapsulates that common
+// boilerplate.
+static lv_obj_t* create_standard_body_content(lv_obj_t *screen, lv_obj_t *top_nav_obj, bool scrollable) {
+    lv_obj_t* body_content = lv_obj_create(screen);
+    lv_obj_set_size(body_content, lv_obj_get_width(screen), lv_obj_get_height(screen) - TOP_NAV_HEIGHT - COMPONENT_PADDING);
+    lv_obj_align_to(body_content, top_nav_obj, LV_ALIGN_OUT_BOTTOM_MID, 0, COMPONENT_PADDING);
     lv_obj_set_style_bg_color(body_content, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN);
     lv_obj_set_style_pad_left(body_content, EDGE_PADDING, LV_PART_MAIN);
     lv_obj_set_style_pad_right(body_content, EDGE_PADDING, LV_PART_MAIN);
     lv_obj_set_style_pad_top(body_content, 0, LV_PART_MAIN);
     lv_obj_set_style_pad_bottom(body_content, COMPONENT_PADDING, LV_PART_MAIN);
+    lv_obj_set_style_border_width(body_content, 0, LV_PART_MAIN);
+    lv_obj_set_scroll_dir(body_content, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(body_content, scrollable ? LV_SCROLLBAR_MODE_AUTO : LV_SCROLLBAR_MODE_OFF);
+    lv_obj_set_style_pad_right(body_content, 0, LV_PART_SCROLLBAR);
+    return body_content;
+}
+
+typedef struct {
+    lv_obj_t *screen;
+    lv_obj_t *top_nav;
+    lv_obj_t *body;
+} screen_scaffold_t;
+
+// Build root screen: top nav + standard body container.
+// Screen-specific code should only populate scaffold.body, then call
+// load_screen_and_cleanup_previous(scaffold.screen).
+static screen_scaffold_t create_top_nav_screen_scaffold(const json &cfg, bool scrollable) {
+    screen_scaffold_t out = {0};
+
+    out.screen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(out.screen, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN);
+    lv_obj_set_style_radius(out.screen, 0, LV_PART_MAIN);
+    lv_obj_set_style_text_line_space(out.screen, BODY_LINE_SPACING, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(out.screen, 0, LV_PART_MAIN);
+    lv_obj_set_style_outline_width(out.screen, 0, LV_PART_MAIN);
+
+    out.top_nav = top_nav_from_screen_json(out.screen, cfg);
+    out.body = create_standard_body_content(out.screen, out.top_nav, scrollable);
+    return out;
+}
+
+
+void demo_screen(void *ctx)
+{
+    (void)ctx;
+
+    json cfg = {
+        {"top_nav", {
+            {"title", "Home"},
+            {"show_back_button", false},
+            {"show_power_button", true},
+        }}
+    };
+    screen_scaffold_t screen = create_top_nav_screen_scaffold(cfg, true);
+    lv_obj_t *scr = screen.screen;
+    lv_obj_t *body_content = screen.body;
 
     // debugging
     // lv_obj_set_style_border_color(body_content, lv_color_hex(BUTTON_BACKGROUND_COLOR), LV_PART_MAIN);
-    lv_obj_set_style_border_width(body_content, 0, LV_PART_MAIN);
-
-    // Limit scrolling to the vertical direction only
-    lv_obj_set_scroll_dir(body_content, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(body_content, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_set_style_pad_right(body_content, 0, LV_PART_SCROLLBAR);
 
     static const button_list_item_t demo_buttons[] = {
         { .label = "Language", .value = NULL },
@@ -67,89 +168,55 @@ void demo_screen(void *ctx)
 }
 
 
-
-void button_list_screen(void *ctx)
+void button_list_screen(void *ctx_json)
 {
-    static const button_list_screen_ctx_t defaults = {
-        .top_nav = {
-            .title = "Settings",
-            .show_back_button = false,
-            .show_power_button = false,
-        },
-        .button_list = NULL,
-        .button_list_len = 0,
-    };
+    const char *json_str = (const char *)ctx_json;
 
-    const button_list_screen_ctx_t *screen_ctx = (const button_list_screen_ctx_t *)ctx;
-    if (!screen_ctx) {
-        screen_ctx = &defaults;
+    json cfg;
+    parse_screen_json_ctx(json_str, cfg);
+    if (!cfg.contains("button_list") || !cfg["button_list"].is_array()) {
+        throw std::runtime_error("button_list is required and must be an array");
     }
 
-    // Create a new screen
-    lv_obj_t * scr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(scr, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN); // Set background color to black
+    const auto &button_list_json = cfg["button_list"];
+    std::vector<std::string> labels;
+    std::vector<button_list_item_t> items;
 
-    // Set global style defaults
-    lv_obj_set_style_radius(scr, 0, LV_PART_MAIN);
-    lv_obj_set_style_text_line_space(scr, BODY_LINE_SPACING, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(scr, 0, LV_PART_MAIN);
-    lv_obj_set_style_outline_width(scr, 0, LV_PART_MAIN);
+    labels.reserve(button_list_json.size());
+    items.reserve(button_list_json.size());
 
-    lv_obj_t* lv_seedsigner_top_nav = top_nav(scr, &screen_ctx->top_nav); // Add top navigation bar
+    for (const auto &it : button_list_json) {
+        if (it.is_string()) {
+            labels.push_back(it.get<std::string>());
+        } else if (it.is_array() && !it.empty() && it[0].is_string()) {
+            labels.push_back(it[0].get<std::string>());
+        } else {
+            throw std::runtime_error("button_list entries must be string or array with string label at index 0");
+        }
 
-    lv_obj_t* body_content = lv_obj_create(scr);
-    lv_obj_set_size(body_content, lv_obj_get_width(scr), lv_obj_get_height(scr) - TOP_NAV_HEIGHT - COMPONENT_PADDING);
-    lv_obj_align_to(body_content, lv_seedsigner_top_nav, LV_ALIGN_OUT_BOTTOM_MID, 0, COMPONENT_PADDING);
-    lv_obj_set_style_bg_color(body_content, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN);
-    lv_obj_set_style_pad_left(body_content, EDGE_PADDING, LV_PART_MAIN);
-    lv_obj_set_style_pad_right(body_content, EDGE_PADDING, LV_PART_MAIN);
-    lv_obj_set_style_pad_top(body_content, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(body_content, COMPONENT_PADDING, LV_PART_MAIN);
+        button_list_item_t item = {.label = labels.back().c_str(), .value = NULL};
+        items.push_back(item);
+    }
 
-    // debugging
-    // lv_obj_set_style_border_color(body_content, lv_color_hex(BUTTON_BACKGROUND_COLOR), LV_PART_MAIN);
-    lv_obj_set_style_border_width(body_content, 0, LV_PART_MAIN);
+    screen_scaffold_t screen = create_top_nav_screen_scaffold(cfg, true);
+    lv_obj_t *scr = screen.screen;
+    lv_obj_t *body_content = screen.body;
 
-    // Limit scrolling to the vertical direction only
-    lv_obj_set_scroll_dir(body_content, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(body_content, LV_SCROLLBAR_MODE_AUTO);
-    lv_obj_set_style_pad_right(body_content, 0, LV_PART_SCROLLBAR);
-
-    button_list(body_content, screen_ctx->button_list, screen_ctx->button_list_len);
+    button_list(body_content, items.data(), items.size());
 
     load_screen_and_cleanup_previous(scr);
 }
 
-
 void main_menu_screen(void *ctx)
 {
+    // `ctx` is unused for main_menu_screen, but kept to match the shared
+    // screen callback signature. Cast to void to silence unused-parameter warnings.
     (void)ctx;
 
-    top_nav_ctx_t top_nav_ctx = TOP_NAV_CTX_DEFAULTS;
-    top_nav_ctx.title = "Home";
-    top_nav_ctx.show_back_button = false;
-    top_nav_ctx.show_power_button = true;
-
-    lv_obj_t *scr = lv_obj_create(NULL);
-    lv_obj_set_style_bg_color(scr, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN);
-    lv_obj_set_style_radius(scr, 0, LV_PART_MAIN);
-    lv_obj_set_style_text_line_space(scr, BODY_LINE_SPACING, LV_PART_MAIN);
-    lv_obj_set_style_pad_all(scr, 0, LV_PART_MAIN);
-    lv_obj_set_style_outline_width(scr, 0, LV_PART_MAIN);
-
-    lv_obj_t* lv_seedsigner_top_nav = top_nav(scr, &top_nav_ctx);
-
-    lv_obj_t* body_content = lv_obj_create(scr);
-    lv_obj_set_size(body_content, lv_obj_get_width(scr), lv_obj_get_height(scr) - TOP_NAV_HEIGHT - COMPONENT_PADDING);
-    lv_obj_align_to(body_content, lv_seedsigner_top_nav, LV_ALIGN_OUT_BOTTOM_MID, 0, COMPONENT_PADDING);
-    lv_obj_set_style_bg_color(body_content, lv_color_hex(BACKGROUND_COLOR), LV_PART_MAIN);
-    lv_obj_set_style_pad_left(body_content, EDGE_PADDING, LV_PART_MAIN);
-    lv_obj_set_style_pad_right(body_content, EDGE_PADDING, LV_PART_MAIN);
-    lv_obj_set_style_pad_top(body_content, 0, LV_PART_MAIN);
-    lv_obj_set_style_pad_bottom(body_content, COMPONENT_PADDING, LV_PART_MAIN);
-    lv_obj_set_style_border_width(body_content, 0, LV_PART_MAIN);
-    lv_obj_set_scroll_dir(body_content, LV_DIR_NONE);
-    lv_obj_set_scrollbar_mode(body_content, LV_SCROLLBAR_MODE_OFF);
+    json cfg = {{"top_nav", {{"title", "Home"}, {"show_back_button", false}, {"show_power_button", true}}}};
+    screen_scaffold_t screen = create_top_nav_screen_scaffold(cfg, false);
+    lv_obj_t *scr = screen.screen;
+    lv_obj_t *body_content = screen.body;
 
     static const char *icons[] = {
         SeedSignerIconConstants::SCAN,
@@ -162,40 +229,43 @@ void main_menu_screen(void *ctx)
     const lv_coord_t available_w = lv_obj_get_content_width(body_content);
     const lv_coord_t available_h = lv_obj_get_content_height(body_content);
 
-    const lv_coord_t outer_x = EDGE_PADDING * 3;
-    const lv_coord_t outer_y = COMPONENT_PADDING * 3;
-    const lv_coord_t gap_x = COMPONENT_PADDING * 3;
-    const lv_coord_t gap_y = COMPONENT_PADDING * 3;
-
-    lv_coord_t usable_w = available_w - (outer_x * 2);
-    lv_coord_t usable_h = available_h - (outer_y * 2);
-    if (usable_w < 100) usable_w = available_w;
-    if (usable_h < 100) usable_h = available_h;
-
-    lv_coord_t button_w = (usable_w - gap_x) / 2;
-    lv_coord_t button_h = (usable_h - gap_y) / 2;
-    if (button_w < 40) button_w = 40;
-    if (button_h < 40) button_h = 40;
-
-    const lv_coord_t grid_w = (button_w * 2) + gap_x;
-    const lv_coord_t grid_h = (button_h * 2) + gap_y;
-    const lv_coord_t x0 = (available_w > grid_w) ? ((available_w - grid_w) / 2) : 0;
-    const lv_coord_t y0 = (available_h > grid_h) ? ((available_h - grid_h) / 2) : 0;
+    // Max out the large button width. Note that the body already has edge padding. 
+    lv_coord_t button_w = (available_w - COMPONENT_PADDING) / 2;
+    lv_coord_t button_h = (available_h - COMPONENT_PADDING) / 2;
 
     lv_obj_t *buttons[4] = {NULL, NULL, NULL, NULL};
     for (uint32_t i = 0; i < 4; ++i) {
         lv_obj_t *btn = large_icon_button(body_content, icons[i], labels[i], NULL);
         lv_obj_set_size(btn, button_w, button_h);
-
-        lv_coord_t col = i % 2;
-        lv_coord_t row = i / 2;
-        lv_obj_set_pos(btn, x0 + col * (button_w + gap_x), y0 + row * (button_h + gap_y));
         buttons[i] = btn;
     }
 
-    if (buttons[0]) {
-        button_set_active(buttons[0], true);
-    }
+    // first row
+    lv_obj_set_pos(
+        buttons[0],
+        0,
+        0
+    );
+    lv_obj_set_pos(
+        buttons[1],
+        button_w + COMPONENT_PADDING,
+        0
+    );
+
+    // second row
+    lv_obj_set_pos(
+        buttons[2],
+        0,
+        button_h + COMPONENT_PADDING
+    );
+    lv_obj_set_pos(
+        buttons[3],
+        button_w + COMPONENT_PADDING,
+        button_h + COMPONENT_PADDING
+
+    );
+
+    button_set_active(buttons[0], true);
 
     load_screen_and_cleanup_previous(scr);
 }
