@@ -41,6 +41,10 @@ Makefile
 __pycache__/
 *.pyc
 
+# Screenshot generator local build outputs
+tests/.build-screenshot/
+tests/screenshot_gen
+
 # OS/editor
 .DS_Store
 Thumbs.db
