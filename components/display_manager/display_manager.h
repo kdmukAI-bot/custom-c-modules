@@ -10,7 +10,7 @@ extern "C" {
 typedef void (*display_manager_ui_callback_t)(void *ctx);
 
 void init(void);
-bool run_screen(display_manager_ui_callback_t cb, void *ctx);
+const char *run_screen(display_manager_ui_callback_t cb, void *ctx);
 
 #ifdef __cplusplus
 }

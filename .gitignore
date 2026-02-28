@@ -42,11 +42,13 @@ __pycache__/
 *.pyc
 
 # Screenshot generator local build outputs
-tests/.build-screenshot/
-tests/screenshot_gen
+tests/screenshot_generator/.build/
+tests/screenshot_generator/screenshot_gen
 
 # OS/editor
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+
+# Screenshot generator output

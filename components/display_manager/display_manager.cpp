@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <exception>
 
 #include "bsp_i2c.h"
 #include "bsp_display.h"
@@ -42,7 +43,7 @@ void io_expander_init(i2c_master_bus_handle_t bus_handle)
 }
 
 
-void init(void)
+extern "C" void init(void)
 {
     i2c_master_bus_handle_t i2c_bus_handle = bsp_i2c_init();
 
@@ -86,17 +87,26 @@ static void touchpad_read(lv_indev_drv_t *indev_drv, lv_indev_data_t *data)
     data->point.y = last_y;
 }
 
-bool run_screen(display_manager_ui_callback_t cb, void *ctx)
+extern "C" const char *run_screen(display_manager_ui_callback_t cb, void *ctx)
 {
     if (!cb) {
-        return false;
+        return "null screen callback";
     }
     if (!lvgl_port_lock(0)) {
-        return false;
+        return "display lock unavailable";
     }
-    cb(ctx);
+
+    const char *err = NULL;
+    try {
+        cb(ctx);
+    } catch (const std::exception &e) {
+        err = e.what();
+    } catch (...) {
+        err = "unknown exception in screen callback";
+    }
+
     lvgl_port_unlock();
-    return true;
+    return err;
 }
 
 void lv_port_init(void)

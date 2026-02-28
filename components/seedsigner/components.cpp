@@ -4,12 +4,6 @@
 
 #include <stdint.h>
 
-extern "C" const top_nav_ctx_t TOP_NAV_CTX_DEFAULTS = {
-    .title = "My Title",
-    .show_back_button = true,
-    .show_power_button = false,
-};
-
 extern "C" __attribute__((weak)) void seedsigner_lvgl_on_button_selected(uint32_t index, const char *label);
 
 static void top_nav_button_event_callback(lv_event_t* e) {
@@ -23,8 +17,8 @@ static void top_nav_button_event_callback(lv_event_t* e) {
     seedsigner_lvgl_on_button_selected(0xFFFFFFFFu, event_label);
 }
 
-static lv_obj_t* top_nav_icon_button(lv_obj_t* parent, const char* icon, lv_align_t align, lv_coord_t x_ofs, const char* event_label) {
-    lv_obj_t* btn = lv_btn_create(parent);
+static lv_obj_t* top_nav_icon_button(lv_obj_t* lv_parent, const char* icon, lv_align_t align, lv_coord_t x_ofs, const char* event_label) {
+    lv_obj_t* btn = lv_btn_create(lv_parent);
     lv_obj_set_size(btn, TOP_NAV_BUTTON_SIZE, TOP_NAV_BUTTON_SIZE);
     lv_obj_align(btn, align, x_ofs, 0);
     lv_obj_set_style_bg_color(btn, lv_color_hex(BUTTON_BACKGROUND_COLOR), LV_PART_MAIN);
@@ -41,12 +35,9 @@ static lv_obj_t* top_nav_icon_button(lv_obj_t* parent, const char* icon, lv_alig
     return btn;
 }
 
-lv_obj_t* top_nav(lv_obj_t* parent, const top_nav_ctx_t *ctx) {
-    if (!ctx) {
-        ctx = &TOP_NAV_CTX_DEFAULTS;
-    }
+lv_obj_t* top_nav(lv_obj_t* lv_parent, const char *title, bool show_back_button, bool show_power_button) {
 
-    lv_obj_t* lv_parent = parent ? parent : lv_scr_act();
+    lv_parent = lv_parent ? lv_parent : lv_scr_act();
     lv_obj_t* lv_top_nav = lv_obj_create(lv_parent);
 
     // TopNav should be the full horizontal width
@@ -61,27 +52,18 @@ lv_obj_t* top_nav(lv_obj_t* parent, const top_nav_ctx_t *ctx) {
 
     lv_obj_set_style_outline_width(lv_top_nav, 0, LV_PART_MAIN);
 
-
-    // lv_style_t style;
-    // lv_style_init(&style);
-    // lv_style_set_pad_all(&style, 0);
-    // lv_style_set_border_width(&style, 0);
-    // lv_style_set_radius(&style, 0);
-    // lv_style_set_bg_color(&style, lv_color_hex(BACKGROUND_COLOR));
-    // lv_obj_add_style(lv_top_nav, &style, 0);
-
     lv_obj_t* back_btn = NULL;
     lv_obj_t* power_btn = NULL;
 
-    if (ctx->show_back_button) {
+    if (show_back_button) {
         back_btn = top_nav_icon_button(lv_top_nav, SeedSignerIconConstants::CHEVRON_LEFT, LV_ALIGN_LEFT_MID, EDGE_PADDING, "topnav_back");
     }
 
-    if (ctx->show_power_button) {
+    if (show_power_button) {
         power_btn = top_nav_icon_button(lv_top_nav, SeedSignerIconConstants::POWER, LV_ALIGN_RIGHT_MID, -EDGE_PADDING, "topnav_power");
     }
 
-    const char *label_text = ctx->title ? ctx->title : "";
+    const char *label_text = title ? title : "";
     lv_obj_t* label = lv_label_create(lv_top_nav);
     lv_label_set_text(label, label_text);
     lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);
@@ -130,24 +112,6 @@ lv_obj_t* top_nav(lv_obj_t* parent, const top_nav_ctx_t *ctx) {
         lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
     }
 
-
-    // if (this->back_button) {
-    //     lv_obj_set_width(label, 320 - GUIConstants::EDGE_PADDING - GUIConstants::TOP_NAV_BUTTON_SIZE - GUIConstants::COMPONENT_PADDING);
-    //     lv_obj_align_to(label, this->back_button->lv_btn, LV_ALIGN_OUT_RIGHT_MID, GUIConstants::COMPONENT_PADDING, -4);
-    // } else {
-    //     lv_obj_center(label);
-    // }
-    // lv_style_t label_style;
-    // lv_style_init(&label_style);
-    // // if (this->font_size == TOP_NAV_TITLE_FONT_SIZE) {
-    // //     lv_style_set_text_font(&label_style, Fonts::FONT__OPEN_SANS__SEMIBOLD__20);
-    // // } else if (this->font_size == 26) {
-    // //     lv_style_set_text_font(&label_style, Fonts::FONT__OPEN_SANS__SEMIBOLD__26);
-    // // }
-    // lv_style_set_text_font(&label_style, &lv_font_montserrat_20);
-    // lv_style_set_text_color(&label_style, lv_color_hex(BODY_FONT_COLOR));
-    // lv_style_set_pad_right(&label_style, EDGE_PADDING);
-    // lv_obj_add_style(label, &label_style, 0);
 
     return lv_top_nav;
 }
@@ -280,12 +244,18 @@ void button_toggle_callback(lv_event_t* e) {
         }
     }
 
-    const char *label_text = (const char *)lv_event_get_user_data(e);
-    if (!label_text) {
-        label_text = "";
-        lv_obj_t* label = lv_obj_get_child(btn, 0);
-        if (label) {
-            label_text = lv_label_get_text(label);
+    // Derive label text from the button's label child at event time.
+    // This avoids dangling pointers when original source strings are temporary.
+    const char *label_text = "";
+    uint32_t btn_child_count = lv_obj_get_child_cnt(btn);
+    for (uint32_t i = 0; i < btn_child_count; ++i) {
+        lv_obj_t *child = lv_obj_get_child(btn, i);
+        if (!child) continue;
+        if (lv_obj_check_type(child, &lv_label_class)) {
+            const char *t = lv_label_get_text(child);
+            if (t && t[0] != '\0') {
+                label_text = t;
+            }
         }
     }
     seedsigner_lvgl_on_button_selected(selected_index, label_text);
@@ -315,10 +285,10 @@ lv_obj_t* button(lv_obj_t* lv_parent, const char* text, lv_obj_t* align_to) {
     lv_label_set_text(label, text);
 
     // Wire up gesture-aware input callback
-    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_PRESSED, (void*)text);
-    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_PRESSING, (void*)text);
-    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_CLICKED, (void*)text);
-    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_RELEASED, (void*)text);
+    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_RELEASED, NULL);
 
     // Default to inactive state
     button_set_active(lv_button, false);
@@ -359,10 +329,10 @@ lv_obj_t* large_icon_button(lv_obj_t* lv_parent, const char* icon, const char* t
     lv_label_set_long_mode(text_label, LV_LABEL_LONG_CLIP);
     lv_label_set_text(text_label, text ? text : "");
 
-    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_PRESSED, (void*)text);
-    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_PRESSING, (void*)text);
-    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_CLICKED, (void*)text);
-    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_RELEASED, (void*)text);
+    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_PRESSED, NULL);
+    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_PRESSING, NULL);
+    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(lv_button, button_toggle_callback, LV_EVENT_RELEASED, NULL);
 
     button_set_active(lv_button, false);
     return lv_button;

@@ -1,0 +1,54 @@
+{
+  "main_menu_screen": {},
+  "button_list_screen": {
+    "context": {
+      "button_list": [
+        "Language",
+        "Persistent Settings",
+        "Camera",
+        "Network"
+      ],
+      "top_nav": {
+        "title": "Settings",
+        "show_back_button": true,
+        "show_power_button": false
+      }
+    },
+    "variations": [
+      {
+        "name": "1_item",
+        "context": {
+          "button_list": [
+            "Continue"
+          ]
+        }
+      },
+      {
+        "name": "scroll_many",
+        "context": {
+          "button_list": [
+            "Language",
+            "Persistent Settings",
+            "Camera",
+            "Network",
+            "Display",
+            "Security",
+            "Diagnostics",
+            "Advanced",
+            "About",
+            "Factory Reset"
+          ]
+        }
+      },
+      {
+        "name": "long_title",
+        "context": {
+          "animated": true,
+          "top_nav": {
+            "title": "Donaudampfschifffahrtsgesellschaftskapitaensanwaerterpruefungsordnung"
+          }
+        }
+      }
+    ]
+  }
+}
