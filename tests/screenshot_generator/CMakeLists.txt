@@ -10,16 +10,24 @@ find_package(PNG REQUIRED)
 
 
 # Repo layout assumptions:
-# custom-c-modules/tests/screenshot_generator (this file)
-# ../../../references/micropython/ports/esp32/managed_components/lvgl__lvgl
-# ../../components/seedsigner
+# - this file lives at seedsigner-c-modules/tests/screenshot_generator
+# - LVGL headers are provided via -DLVGL_ROOT=<path> (preferred), or auto-detected below.
 set(PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../..")
-set(LVGL_ROOT "${PROJECT_ROOT}/references/micropython/ports/esp32/managed_components/lvgl__lvgl")
 set(SEEDSIGNER_DIR "${CMAKE_CURRENT_LIST_DIR}/../../components/seedsigner")
 set(NLOHMANN_JSON_INCLUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../components/nlohmann_json/include")
 
+if(NOT DEFINED LVGL_ROOT OR LVGL_ROOT STREQUAL "")
+    # Builder-local fallback
+    set(LVGL_ROOT "${PROJECT_ROOT}/../micropython/ports/esp32/managed_components/lvgl__lvgl")
+endif()
+
 if(NOT EXISTS "${LVGL_ROOT}/lvgl.h")
-  message(FATAL_ERROR "LVGL root not found at: ${LVGL_ROOT}")
+    # Legacy fallback (older layout)
+    set(LVGL_ROOT "${PROJECT_ROOT}/references/micropython/ports/esp32/managed_components/lvgl__lvgl")
+endif()
+
+if(NOT EXISTS "${LVGL_ROOT}/lvgl.h")
+    message(FATAL_ERROR "LVGL root not found. Pass -DLVGL_ROOT=<path to .../managed_components/lvgl__lvgl>")
 endif()
 
 if(NOT EXISTS "${NLOHMANN_JSON_INCLUDE_DIR}/nlohmann/json.hpp")
