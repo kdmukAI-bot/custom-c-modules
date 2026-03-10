@@ -58,3 +58,7 @@ Thumbs.db
 # Screenshot generator build directories
 tools/screenshot_generator/build-*/
 tools/screenshot_generator/build/
+
+# Input nav harness local build outputs
+tests/input_nav_harness/build-*/
+tests/input_nav_harness/build/
