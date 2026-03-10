@@ -57,6 +57,10 @@ static void activate_focused(nav_ctx_t *ctx) {
         if (idx >= ctx->top_count) idx = 0;
         lv_obj_t *obj = ctx->top_items[idx];
         if (!obj || !lv_obj_is_valid(obj)) return;
+
+        // Design decision: consume one body click to prevent parked focused body
+        // control from receiving ENTER fallback when top-nav virtual zone handles ENTER.
+        suppress_next_body_button_click();
         lv_event_send(obj, LV_EVENT_CLICKED, NULL);
         return;
     }

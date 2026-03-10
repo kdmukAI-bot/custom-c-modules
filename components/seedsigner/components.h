@@ -18,4 +18,8 @@ lv_obj_t* button_list(lv_obj_t* lv_parent, const button_list_item_t *items, size
 
 void button_set_active(lv_obj_t* lv_button, bool active);
 
+// Suppress exactly one upcoming body button CLICKED event (used by nav layer
+// to prevent top-nav ENTER from falling through to parked body selection).
+void suppress_next_body_button_click(void);
+
 #endif // SEEDSIGNER_COMPONENTS_H
