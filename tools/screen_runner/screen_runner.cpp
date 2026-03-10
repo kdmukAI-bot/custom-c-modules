@@ -1,4 +1,10 @@
+#if __has_include(<SDL2/SDL.h>)
 #include <SDL2/SDL.h>
+#elif __has_include(<SDL.h>)
+#include <SDL.h>
+#else
+#error "SDL header not found (expected SDL2/SDL.h or SDL.h)"
+#endif
 
 #include <nlohmann/json.hpp>
 
