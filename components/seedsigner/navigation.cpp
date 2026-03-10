@@ -1,4 +1,5 @@
 #include "navigation.h"
+#include "components.h"
 
 #include <cmath>
 
@@ -15,6 +16,7 @@ typedef struct {
     lv_obj_t **body_items;
     size_t body_count;
     nav_zone_t zone;
+    size_t top_virtual_index;
     nav_body_layout_t body_layout;
     nav_aux_policy_t aux_policy;
 } nav_ctx_t;
@@ -45,64 +47,49 @@ static nav_aux_action_t action_for_aux(const nav_ctx_t *ctx, int idx) {
 }
 
 static void activate_focused(nav_ctx_t *ctx) {
-    if (!ctx || !ctx->group) return;
+    if (!ctx) return;
+
+    if (ctx->zone == NAV_ZONE_TOP) {
+        if (ctx->top_count == 0) return;
+        size_t idx = ctx->top_virtual_index;
+        if (idx >= ctx->top_count) idx = 0;
+        lv_obj_t *obj = ctx->top_items[idx];
+        if (!obj || !lv_obj_is_valid(obj)) return;
+        lv_event_send(obj, LV_EVENT_CLICKED, NULL);
+        return;
+    }
+
+    if (!ctx->group) return;
     lv_obj_t *obj = lv_group_get_focused(ctx->group);
     if (!obj) return;
     lv_event_send(obj, LV_EVENT_CLICKED, NULL);
 }
 
-static int focused_logical_index(nav_ctx_t *ctx) {
-    if (!ctx || !ctx->group) return -1;
-    lv_obj_t *f = lv_group_get_focused(ctx->group);
-    if (!f) return -1;
-
+static void set_top_virtual_active(nav_ctx_t *ctx, size_t idx) {
+    if (!ctx) return;
     for (size_t i = 0; i < ctx->top_count; ++i) {
-        if (ctx->top_items[i] == f) return (int)i;
+        if (ctx->top_items[i]) {
+            button_set_active(ctx->top_items[i], i == idx);
+        }
     }
-    for (size_t i = 0; i < ctx->body_count; ++i) {
-        if (ctx->body_items && ctx->body_items[i] == f) return (int)(ctx->top_count + i);
-    }
-    return -1;
-}
-
-static bool focus_logical_index(nav_ctx_t *ctx, size_t logical_idx) {
-    if (!ctx || !ctx->group) return false;
-
-    size_t total = ctx->top_count + ctx->body_count;
-    if (logical_idx >= total) return false;
-
-    int cur = focused_logical_index(ctx);
-    if (cur < 0) {
-        // Initial placement fallback when no current focus exists.
-        lv_obj_t *target = NULL;
-        if (logical_idx < ctx->top_count) target = ctx->top_items[logical_idx];
-        else if (ctx->body_items) target = ctx->body_items[logical_idx - ctx->top_count];
-        if (!target || !lv_obj_is_valid(target)) return false;
-        lv_group_focus_obj(target);
-        return true;
-    }
-
-    while ((size_t)cur < logical_idx) {
-        lv_group_focus_next(ctx->group);
-        cur++;
-    }
-    while ((size_t)cur > logical_idx) {
-        lv_group_focus_prev(ctx->group);
-        cur--;
-    }
-    return true;
 }
 
 static bool focus_top(nav_ctx_t *ctx, size_t idx) {
     if (!ctx || idx >= ctx->top_count) return false;
     ctx->zone = NAV_ZONE_TOP;
-    return focus_logical_index(ctx, idx);
+    ctx->top_virtual_index = idx;
+    set_top_virtual_active(ctx, idx);
+    return true;
 }
 
 static bool focus_body(nav_ctx_t *ctx, size_t idx) {
-    if (!ctx || idx >= ctx->body_count) return false;
+    if (!ctx || idx >= ctx->body_count || !ctx->group || !ctx->body_items) return false;
+    lv_obj_t *obj = ctx->body_items[idx];
+    if (!obj || !lv_obj_is_valid(obj)) return false;
     ctx->zone = NAV_ZONE_BODY;
-    return focus_logical_index(ctx, ctx->top_count + idx);
+    set_top_virtual_active(ctx, NAV_INDEX_NONE);
+    lv_group_focus_obj(obj);
+    return true;
 }
 
 static int focused_index_in(nav_ctx_t *ctx, lv_obj_t **arr, size_t count) {
@@ -191,11 +178,16 @@ static void nav_key_handler(lv_event_t *e) {
         return;
     }
 
-    int top_i = focused_index_in(ctx, ctx->top_items, ctx->top_count);
+    int top_i = (ctx->zone == NAV_ZONE_TOP) ? (int)ctx->top_virtual_index : -1;
     int body_i = focused_index_in(ctx, ctx->body_items, ctx->body_count);
 
-    if (top_i >= 0) ctx->zone = NAV_ZONE_TOP;
-    if (body_i >= 0) ctx->zone = NAV_ZONE_BODY;
+    if (body_i >= 0) {
+        ctx->zone = NAV_ZONE_BODY;
+    }
+    if (ctx->zone == NAV_ZONE_TOP && (top_i < 0 || (size_t)top_i >= ctx->top_count)) {
+        top_i = 0;
+        ctx->top_virtual_index = 0;
+    }
 
     if (key == LV_KEY_LEFT || key == LV_KEY_RIGHT) {
         if (ctx->zone == NAV_ZONE_TOP && ctx->top_count > 1 && top_i >= 0) {
@@ -317,9 +309,8 @@ void nav_bind(const nav_config_t *cfg) {
         ctx->top_items[ctx->top_count++] = cfg->top_power_btn;
     }
 
-    for (size_t i = 0; i < ctx->top_count; ++i) {
-        lv_group_add_obj(ctx->group, ctx->top_items[i]);
-    }
+    // Design decision: keep top-nav as a virtual focus zone (not in LVGL group)
+    // to avoid re-entrant/state crashes observed when moving group focus into top-nav.
     for (size_t i = 0; i < ctx->body_count; ++i) {
         if (ctx->body_items[i]) lv_group_add_obj(ctx->group, ctx->body_items[i]);
     }
