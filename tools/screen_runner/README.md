@@ -83,7 +83,11 @@ tools/screen_runner/build/screen_runner [tools/scenarios.json]
 
 Keyboard in current minimal slice:
 - arrows, Enter, `1`/`2`/`3` -> forwarded to LVGL keypad/nav path
-- `PageUp` / `PageDown` -> previous/next scenario
+  - aux fallback: `F1`/`F2`/`F3`
+- scenario switching:
+  - `PageUp` / `PageDown`
+  - mac-friendly: `[` / `]`
+  - fallback: `,` / `.`
 
 If CMake cannot find SDL2, pass one of:
 - `-DCMAKE_PREFIX_PATH="$(brew --prefix sdl2)"`

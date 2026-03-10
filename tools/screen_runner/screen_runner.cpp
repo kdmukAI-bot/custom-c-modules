@@ -143,12 +143,23 @@ static uint32_t map_sdl_key(SDL_Keycode key) {
         case SDLK_RIGHT: return LV_KEY_RIGHT;
         case SDLK_RETURN:
         case SDLK_KP_ENTER: return LV_KEY_ENTER;
+
+        // AUX keys: accept number-row, keypad, shifted-symbol variants (common on mac layouts), and F1/F2/F3.
         case SDLK_1:
-        case SDLK_KP_1: return (uint32_t)'1';
+        case SDLK_KP_1:
+        case SDLK_EXCLAIM:
+        case SDLK_F1: return (uint32_t)'1';
+
         case SDLK_2:
-        case SDLK_KP_2: return (uint32_t)'2';
+        case SDLK_KP_2:
+        case SDLK_AT:
+        case SDLK_F2: return (uint32_t)'2';
+
         case SDLK_3:
-        case SDLK_KP_3: return (uint32_t)'3';
+        case SDLK_KP_3:
+        case SDLK_HASH:
+        case SDLK_F3: return (uint32_t)'3';
+
         default: return 0;
     }
 }
@@ -271,17 +282,21 @@ int main(int argc, char **argv) {
             if (ev.type == SDL_QUIT) {
                 running = false;
             } else if (ev.type == SDL_KEYDOWN) {
-                if (ev.key.keysym.sym == SDLK_PAGEUP) {
+                SDL_Keycode key = ev.key.keysym.sym;
+                bool prev_scenario = (key == SDLK_PAGEUP || key == SDLK_LEFTBRACKET || key == SDLK_COMMA);
+                bool next_scenario = (key == SDLK_PAGEDOWN || key == SDLK_RIGHTBRACKET || key == SDLK_PERIOD);
+
+                if (prev_scenario) {
                     if (scenario_idx == 0) scenario_idx = scenarios.size() - 1;
                     else scenario_idx--;
                     render_scenario(scenarios[scenario_idx]);
                     SDL_SetWindowTitle(window, ("screen_runner: " + scenarios[scenario_idx].name).c_str());
-                } else if (ev.key.keysym.sym == SDLK_PAGEDOWN) {
+                } else if (next_scenario) {
                     scenario_idx = (scenario_idx + 1) % scenarios.size();
                     render_scenario(scenarios[scenario_idx]);
                     SDL_SetWindowTitle(window, ("screen_runner: " + scenarios[scenario_idx].name).c_str());
                 } else {
-                    uint32_t mapped = map_sdl_key(ev.key.keysym.sym);
+                    uint32_t mapped = map_sdl_key(key);
                     if (mapped != 0) {
                         g_pending_key = mapped;
                         g_key_ready = true;
