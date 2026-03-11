@@ -66,6 +66,24 @@ static void nav_aux_key_handler(lv_event_t *e) {
     if (!ctx) return;
 
     uint32_t key = lv_event_get_key(e);
+
+#if !SS_HAVE_GRIDNAV
+    // Fallback directional wiring when gridnav extension is unavailable in the
+    // current LVGL build: map arrows to basic group traversal.
+    if (key == LV_KEY_UP || key == LV_KEY_LEFT) {
+        if (ctx->group) lv_group_focus_prev(ctx->group);
+        lv_event_stop_bubbling(e);
+        lv_event_stop_processing(e);
+        return;
+    }
+    if (key == LV_KEY_DOWN || key == LV_KEY_RIGHT) {
+        if (ctx->group) lv_group_focus_next(ctx->group);
+        lv_event_stop_bubbling(e);
+        lv_event_stop_processing(e);
+        return;
+    }
+#endif
+
     if (key == LV_KEY_ENTER) {
         activate_focused(ctx);
         lv_event_stop_bubbling(e);
