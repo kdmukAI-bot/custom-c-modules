@@ -147,19 +147,18 @@ void nav_bind(const nav_config_t *cfg) {
     }
 
 #if SS_HAVE_GRIDNAV
-    // Native directional navigation on focus-container parents.
-    // Avoid attaching on screen root (observed unstable in harness).
-    lv_obj_t *top_parent = NULL;
-    if (cfg->top_back_btn && lv_obj_is_valid(cfg->top_back_btn)) top_parent = lv_obj_get_parent(cfg->top_back_btn);
-    else if (cfg->top_power_btn && lv_obj_is_valid(cfg->top_power_btn)) top_parent = lv_obj_get_parent(cfg->top_power_btn);
+    // Nested gridnav strategy:
+    // - screen-level enables body <-> top-nav directional transitions.
+    // - body-level enables true 2D traversal within body grid/list.
+    lv_gridnav_add(cfg->screen, LV_GRIDNAV_CTRL_NONE);
 
     lv_obj_t *body_parent = NULL;
     if (cfg->body_items && cfg->body_item_count > 0 && cfg->body_items[0] && lv_obj_is_valid(cfg->body_items[0])) {
         body_parent = lv_obj_get_parent(cfg->body_items[0]);
     }
-
-    if (top_parent) lv_gridnav_add(top_parent, LV_GRIDNAV_CTRL_NONE);
-    if (body_parent && body_parent != top_parent) lv_gridnav_add(body_parent, LV_GRIDNAV_CTRL_NONE);
+    if (body_parent && body_parent != cfg->screen) {
+        lv_gridnav_add(body_parent, LV_GRIDNAV_CTRL_NONE);
+    }
 #endif
 
     lv_group_focus_freeze(ctx->group, false);
