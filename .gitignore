@@ -47,6 +47,13 @@ tools/screenshot_generator/screenshot_gen
 
 tools/screenshot_generator/screenshots/
 
+# Secrets / credentials
+.env
+*.env
+*.key
+*.pem
+secrets/
+
 # OS/editor
 .DS_Store
 Thumbs.db
@@ -59,3 +66,4 @@ Thumbs.db
 tools/screenshot_generator/build-*/
 tools/screenshot_generator/build/
 tools/screen_runner/build-asan/screen_runner
+CLAUDE.md
