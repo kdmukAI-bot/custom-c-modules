@@ -3,13 +3,13 @@
   "button_list_screen": {
     "context": {
       "button_list": [
-        "Language",
-        "Persistent Settings",
-        "Camera",
-        "Network"
+        "Wallet",
+        "Sign Transaction",
+        "Verify Address",
+        "Export Xpub"
       ],
       "top_nav": {
-        "title": "Settings",
+        "title": "Bitcoin Tools",
         "show_back_button": true,
         "show_power_button": false
       }
@@ -19,7 +19,7 @@
         "name": "1_item",
         "context": {
           "button_list": [
-            "Continue"
+            "Confirm & Sign"
           ]
         }
       },
@@ -27,14 +27,14 @@
         "name": "scroll_many",
         "context": {
           "button_list": [
-            "Language",
-            "Persistent Settings",
-            "Camera",
-            "Network",
-            "Display",
-            "Security",
-            "Diagnostics",
-            "Advanced",
+            "Wallet",
+            "Sign Transaction",
+            "Verify Address",
+            "Export Xpub",
+            "Seed Words",
+            "Passphrase",
+            "Multi-sig",
+            "I/O Test",
             "About",
             "Factory Reset"
           ]
